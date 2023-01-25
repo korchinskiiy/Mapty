@@ -11,6 +11,50 @@ const inputDuration = document.querySelector('.form__input--duration');
 const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
 
+class Workout {
+  date = new Date();
+  id = (Date.now() + '').slice(-10);
+
+  constructor(coords, distance, duration) {
+    this.coords = coords; // [lat,lng]
+    this.distance = distance; // in km
+    this.duration = duration; // in min
+  }
+}
+
+class Running extends Workout {
+  constructor(coords, distance, duration, cadence) {
+    super(coords, distance, duration);
+    this.cadence = cadence;
+    this.calcPace();
+  }
+
+  calcPace() {
+    this.pace = this.duration / this.distance;
+    return this.pace;
+  }
+}
+
+class Cycling extends Workout {
+  constructor(coords, distance, duration, elevationGain) {
+    super(coords, distance, duration);
+    this.elevationGain = elevationGain;
+    this.calcSpeed();
+  }
+
+  calcSpeed() {
+    this.speed = this.distance / (this.duration / 60);
+    return this.speed;
+  }
+}
+
+const run = new Running([39, -12], 5.2, 24, 17);
+const cycle = new Cycling([39, -12], 27, 50, 523);
+
+console.log(run, cycle);
+
+//////////////////////////////
+//APPLICATION ARCHITECTURE
 class App {
   #map;
   #mapEvent;
@@ -18,7 +62,6 @@ class App {
   constructor() {
     this._getPosition();
     form.addEventListener('submit', this._newWorkout.bind(this));
-
     inputType.addEventListener('change', this._toggleElevationField);
   }
 
@@ -65,7 +108,35 @@ class App {
   }
 
   _newWorkout(e) {
+    const validInputs = (...inputs) =>
+      inputs.every(input => Number.isFinite(input));
+
+    const positiveNum = (...numbers) => numbers.every(num => num > 0);
+
     e.preventDefault();
+
+    const type = inputType.value;
+    const distance = +inputDistance.value;
+    const duration = +inputDuration.value;
+
+    if (type === 'running') {
+      const cadence = +inputCadence.value;
+      if (
+        !validInputs(distance, duration, cadence) ||
+        !positiveNum(distance, duration, cadence)
+      )
+        alert(`Type a positive number`);
+    }
+
+    if (type === 'cycling') {
+      const elevation = +inputElevation.value;
+      if (
+        !validInputs(distance, duration, elevation) ||
+        !positiveNum(distance, duration)
+      )
+        alert(`Type a positive number`);
+    }
+
     const { lat, lng } = this.#mapEvent.latlng;
 
     //Clear input fields after submitting
@@ -73,7 +144,6 @@ class App {
     inputCadence.value = '';
     inputDuration.value = '';
     inputDistance.focus();
-    console.log(inputType.value);
 
     //Adding marker and poup
     L.marker([lat, lng])
